@@ -6,15 +6,21 @@ Command line arguments are currently not supported.
 ## Usage
 However, you can do a quick configuration in the script
 ```py
-## Real configuration
+## Start configuration
 targetJarFile = "example.jar"
 
+## The following options are adviced NOT to touch them.
 ### if JAVA_HOME is not None, this path is used instead
-### JAVA_HOME_NAME is adviced to be the name of JAVA_HOME directory (eg. "jdk-17/")
+### default: comes from environment variable JAVA_HOME
 JAVA_HOME = None
+
+### JAVA_HOME_NAME is adviced to be the name of JAVA_HOME directory
+### eg. "jdk-17/"
 JAVA_HOME_NAME = None
 
 ### if outputArch is not None, this value is used instead
+### Caution: This should match the platform of the configured JAVA_HOME
+###          (ie. a "linux-x64" binary cannot run jdk for windows)
 ### Possible values = ["windows-x64", "macos-x64", "linux-x64"]
 outputArch = None
 
