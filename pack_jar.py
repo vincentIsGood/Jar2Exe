@@ -16,6 +16,7 @@ JAVA_HOME = None
 JAVA_HOME_NAME = None
 
 ### if outputArch is not None, this value is used instead
+### default: uses the current platform
 ### Caution: This should match the platform of the configured JAVA_HOME
 ###          (ie. a "linux-x64" binary cannot run jdk for windows)
 ### Possible values = ["windows-x64", "macos-x64", "linux-x64"]

@@ -19,6 +19,7 @@ JAVA_HOME = None
 JAVA_HOME_NAME = None
 
 ### if outputArch is not None, this value is used instead
+### default: uses the current platform
 ### Caution: This should match the platform of the configured JAVA_HOME
 ###          (ie. a "linux-x64" binary cannot run jdk for windows)
 ### Possible values = ["windows-x64", "macos-x64", "linux-x64"]
@@ -35,3 +36,6 @@ OR
 
 python3 pack_jar.py
 ```
+
+## Untested Configuration
+SHOULD work Scenario: You are using a Linux machine and you make `JAVA_HOME` point to a jdk for Windows. Then, you make `outputArch = "windows-x64"` and use the produced `.exe` file on a windows machine.
