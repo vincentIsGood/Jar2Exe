@@ -37,5 +37,11 @@ OR
 python3 pack_jar.py
 ```
 
+You then can run the produced binary (`example.exe` on Windows or `example`) 
+just like a normal command line util.
+```sh
+./example --help
+```
+
 ## Untested Configuration
 SHOULD work Scenario: You are using a Linux machine and you make `JAVA_HOME` point to a jdk for Windows. Then, you make `outputArch = "windows-x64"` and use the produced `.exe` file on a windows machine.
