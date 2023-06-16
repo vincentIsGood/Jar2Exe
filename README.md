@@ -51,10 +51,7 @@ You can also do an advanced configuration in the script (not recommended)
 ### if JAVA_HOME is not None, this path is used instead
 ### default: comes from environment variable JAVA_HOME
 JAVA_HOME = None
-
-### JAVA_HOME_NAME is adviced to be the name of JAVA_HOME directory
-### eg. "jdk-17/"
-JAVA_HOME_NAME = None
+JAVA_HOME_NAME = None # auto
 
 ### if outputArch is not None, this value is used instead
 ### default: uses the current platform
