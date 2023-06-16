@@ -42,7 +42,10 @@ To resolve the `./data/test.txt` exception, put `data/` in the current directory
 
 Then execute `./example`.
 
-## Untested Configuration
+## Remain untested
+`CTRL + C` handling is not tested.
+
+## Untested Feature
 You can also do an advanced configuration in the script (not recommended)
 ```py
 ## Start configuration
