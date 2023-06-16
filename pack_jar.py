@@ -207,6 +207,10 @@ def main():
     subprocess.run(cmd)
 
     print("[*] Note: All decompressed files will be cached on execution")
+    print("[*] Cache Location:")
+    print("[*]   - Linux: $HOME/.local/share/warp/packages")
+    print("[*]   - macOS: $HOME/Library/Application Support/warp/packges")
+    print("[*]   - Windows: %LOCALAPPDATA%\\warp\\packages")
     print("[*] For more info about wrap, https://github.com/dgiagio/warp")
 
 main()
