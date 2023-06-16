@@ -1,19 +1,16 @@
+#!/usr/local/bin python3
 import subprocess
 import os
 import shutil
 import sys
 
 ## Start configuration
-targetJarFile = "example.jar"
 
 ## The following options are adviced NOT to touch them.
 ### if JAVA_HOME is not None, this path is used instead
 ### default: comes from environment variable JAVA_HOME
 JAVA_HOME = None
-
-### JAVA_HOME_NAME is adviced to be the name of JAVA_HOME directory
-### eg. "jdk-17/"
-JAVA_HOME_NAME = None
+JAVA_HOME_NAME = None # auto
 
 ### if outputArch is not None, this value is used instead
 ### default: uses the current platform
@@ -23,6 +20,21 @@ JAVA_HOME_NAME = None
 outputArch = None
 
 ## End configuration
+
+targetJarFile = None
+copyWholeDir = ""
+if len(sys.argv) > 1:
+    targetJarFile = sys.argv[1]
+else:
+    print("[!] Usage: python3 %s <target.jar> [<copy_directory>]" % sys.argv[0])
+    print("[*] copy_directory: A directory to be included into the final exe")
+    print("[*]                 (note: the files can only be easily accessed by runner script)")
+    print("[*]                 (see function `createRunnerScript` to modify the script)")
+    sys.exit(0)
+
+if len(sys.argv) > 2:
+    copyWholeDir = sys.argv[2]
+
 SYS_PLATFORM = sys.platform
 bundleDir = "./bundle"
 
@@ -39,22 +51,24 @@ scriptExt = ".bat" if outputArch == "windows-x64" else ".sh"
 outputBin = targetJarFile[:targetJarFile.rindex(".")] + binExt
 runnerScriptFilename = "run" + scriptExt
 
-if not os.path.exists(targetJarFile):
-    raise ValueError("[-] Cannot find target jar file: '%s'" % targetJarFile)
-
 ### Functions
 def findJavaHome():
     global JAVA_HOME, JAVA_HOME_NAME
     if JAVA_HOME != None and JAVA_HOME_NAME != None:
         if not os.path.isdir(JAVA_HOME):
             raise ValueError("[-] JAVA_HOME does not exist OR is not a directoy: '%s'" % JAVA_HOME)
+        JAVA_HOME_NAME = extractSingleFileName(JAVA_HOME)
         return
 
     JAVA_HOME = os.getenv("JAVA_HOME")
     if not os.path.isdir(JAVA_HOME):
         raise ValueError("[-] Env variable JAVA_HOME does not exist OR is not a directoy: '%s'" % JAVA_HOME)
     JAVA_HOME = os.path.normpath(JAVA_HOME)
-    JAVA_HOME_NAME = JAVA_HOME[JAVA_HOME.rindex(os.sep)+1:]
+    JAVA_HOME_NAME = extractSingleFileName(JAVA_HOME)
+
+def assertExist(file):
+    if file != "" and not os.path.exists(file):
+        raise ValueError("[-] Cannot find file: '%s'" % file)
 
 def chmod(file):
     if SYS_PLATFORM != "win32":
@@ -62,21 +76,72 @@ def chmod(file):
 
 def executablePath(file):
     if SYS_PLATFORM != "win32":
-        return "./" + file
+        return "./" + file # local file
     return file
+
+def extractSingleFileName(file):
+    file = os.path.normpath(file)
+    if os.sep in file:
+        file = file[file.rindex(os.sep)+1:]
+    return file
+
+def extractFirstLevelFileName(file):
+    file = os.path.normpath(file)
+    if os.sep in file:
+        file = file[:file.index(os.sep)]
+    return file
+
+def safeMakeDir(dir):
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+
+def safeRmDir(dir):
+    if os.path.exists(dir):
+        os.rmdir(dir)
+
+def copyDir(srcDir, dstDir, firstLevelExcludeDir = ""):
+    if firstLevelExcludeDir:
+        firstLevelExcludeDir = extractFirstLevelFileName(os.path.normpath(firstLevelExcludeDir))
+    newDstDir = os.path.join(dstDir, extractSingleFileName(srcDir))
+    safeMakeDir(dstDir)
+    safeMakeDir(newDstDir)
+    for file in os.listdir(srcDir):
+        pureFileName = file
+        if firstLevelExcludeDir == pureFileName:
+            continue
+        
+        file = os.path.join(srcDir, file)
+        if os.path.isdir(file):
+            copyDir(file, newDstDir)
+        else:
+            dstFile = os.path.join(newDstDir, pureFileName)
+            try:
+                shutil.copy2(file, dstFile)
+                shutil.copystat(file, dstFile)
+            except PermissionError:
+                print("[-] Cannot copy '%s' to '%s', ignoring it" % (file, dstFile))
 
 def createRunnerScript():
     runnerScriptFile = "%s%s" % (bundleDir, runnerScriptFilename)
+
+    ## Deprecated (Do not use cd)
+    # path/to/target.jar -> {cdDir}/{targetJarFilename}
+    # cdDir             = path/to
+    # targetJarFilename = target.jar
+    # cdDir = os.path.dirname(targetJarFile)
+    # targetJarFilename = extractSingleFileName(targetJarFile)
+
     runnerScriptTextWin = f"""@echo off
-set JAVA_HOME={os.path.normpath(bundleDir + JAVA_HOME_NAME)}
+set SCRIPT_DIR=%~dp0
+set JAVA_HOME=%SCRIPT_DIR%\\{os.path.normpath(JAVA_HOME_NAME)}
 
-%JAVA_HOME%\\bin\\java -jar {targetJarFile} %*
-    """
-    runnerScriptTextUnix = f"""#!/bin/sh
-JAVA_HOME={os.path.normpath(bundleDir + JAVA_HOME_NAME)}
+%JAVA_HOME%\\bin\\java -jar %SCRIPT_DIR%\\{targetJarFile} %*"""
+    
+    runnerScriptTextUnix = f"""#!/usr/bin/env bash
+SCRIPT_DIR=$( cd -- \"$( dirname -- \"${{BASH_SOURCE[0]}}\" )\" &> /dev/null && pwd )
+JAVA_HOME=${{SCRIPT_DIR}}/{os.path.normpath(JAVA_HOME_NAME)}
 
-$JAVA_HOME/bin/java -jar {targetJarFile} $@
-    """
+$JAVA_HOME/bin/java -jar ${{SCRIPT_DIR}}/{targetJarFile} $@"""
 
     runnerScriptText = runnerScriptTextWin if outputArch == "windows-x64" else runnerScriptTextUnix
 
@@ -116,17 +181,20 @@ def getWarpPacker():
     return warpPackerFile
 
 def main():
+    global bundleDir, copyWholeDir
+
+    assertExist(targetJarFile)
+    assertExist(copyWholeDir)
     findJavaHome()
 
-    global bundleDir
     bundleDir = os.path.normpath(bundleDir) + "/"
 
-    runtimeDir = bundleDir + JAVA_HOME_NAME
+    print("[+] Copying jre or jdk from '%s' to '%s'" % (JAVA_HOME, bundleDir))
+    copyDir(JAVA_HOME, bundleDir, bundleDir)
 
-    os.makedirs(runtimeDir, exist_ok=True)
-
-    print("[+] Copying jre/jdk from '%s' to '%s'" % (JAVA_HOME, runtimeDir))
-    shutil.copytree(JAVA_HOME, runtimeDir, dirs_exist_ok=True, ignore_dangling_symlinks=True)
+    if copyWholeDir.strip() != "":
+        print("[+] Copying directory '%s' to '%s'" % (copyWholeDir, bundleDir))
+        copyDir(copyWholeDir, bundleDir, bundleDir)
 
     print("[+] Copying '%s' to '%s'" % (targetJarFile, bundleDir))
     shutil.copy(targetJarFile, bundleDir)
